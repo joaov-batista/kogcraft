@@ -1,43 +1,59 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>KOG City</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;700;900&display=swap">
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/style.css"/>
 </head>
 <body>
 
-  <!-- TELA DE AUTH (login / cadastro) -->
+  <!-- ── AUTH ─────────────────────────────── -->
   <div id="screen-login">
-    <div id="auth-box">
-      <!-- Conteúdo injetado pelo ui.js -->
-    </div>
+    <div id="auth-box"><!-- ui.js injeta aqui --></div>
   </div>
 
-  <!-- TELA DO JOGO -->
+  <!-- ── GAME ─────────────────────────────── -->
   <div id="screen-game" class="hidden">
     <canvas id="game-canvas"></canvas>
 
-    <!-- HUD -->
+    <!-- HUD principal -->
     <div id="hud">
       <div id="hud-top">
         <div id="hud-player">
-          <span>🧑</span>
-          <span id="hud-name">Jogador</span>
+          <span>🧑</span><span id="hud-name">Jogador</span>
         </div>
         <div id="hud-coins">🪙 <span id="coin-count">0</span></div>
       </div>
       <div id="hud-bottom">
         <div id="controls-hint">
-          WASD mover · Shift correr · Q agachar · Espaço pular · Clique soco · G chute · E emote · T chat
+          WASD mover · Shift correr · Q agachar · Espaço pular · E interagir · F atacar · 1/2/3 slots · <b>F1</b> 1ª pessoa · <b>F3</b> 3ª pessoa
         </div>
       </div>
     </div>
 
-    <!-- CHAT -->
+    <!-- Hotbar -->
+    <div id="hotbar"></div>
+
+    <!-- Prompt de interação -->
+    <div id="interact-prompt"></div>
+
+    <!-- HUD do carro -->
+    <div id="car-hud">
+      <div class="car-hud-title">💨 NITRO</div>
+      <div id="nitro-wrap"><div id="nitro-bar"></div></div>
+      <div style="font-size:10px;color:#6b7399;margin-top:6px">Shift = Nitro · F = Sair</div>
+    </div>
+
+    <!-- Mensagem de corrida -->
+    <div id="race-msg"></div>
+
+    <!-- Placar futebol -->
+    <div id="soccer-score"></div>
+
+    <!-- Chat -->
     <div id="chat-container">
       <div id="chat-messages"></div>
       <div id="chat-input-row" class="hidden">
@@ -45,7 +61,7 @@
       </div>
     </div>
 
-    <!-- PAUSE -->
+    <!-- Pause -->
     <div id="menu-pause" class="hidden">
       <div class="pause-box">
         <h2>Pausado</h2>
@@ -53,29 +69,55 @@
         <button id="btn-logout">Sair da conta</button>
       </div>
     </div>
+
+    <!-- Toast de notificações -->
+    <div id="toast"></div>
+
+    <!-- Indicador de câmera -->
+    <div id="cam-mode-indicator">📷 F3</div>
+
+    <!-- Mira (crosshair) — visível em F1 -->
+    <div id="crosshair">
+      <div class="ch-h"></div>
+      <div class="ch-v"></div>
+    </div>
+
+    <!-- Overlay de lojas -->
+    <div id="shop-overlay"></div>
   </div>
 
-  <!-- Three.js -->
+  <!-- ── Three.js ──────────────────────────── -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
 
-  <!-- Firebase -->
+  <!-- ── Firebase ─────────────────────────── -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
-  <!-- Jogo -->
+  <!-- ── Jogo (ordem importa!) ────────────── -->
   <script src="firebase-config.js"></script>
   <script src="js/engine.js"></script>
   <script src="js/input.js"></script>
   <script src="js/physics.js"></script>
+  <script src="js/gamestate.js"></script>
   <script src="js/world.js"></script>
   <script src="js/player.js"></script>
   <script src="js/players.js"></script>
+  <script src="js/mobs.js"></script>
+  <script src="js/cars.js"></script>
+  <script src="js/npcs.js"></script>
+  <script src="js/minigames.js"></script>
+  <script src="js/inventory.js"></script>
+  <script src="js/shopui.js"></script>
   <script src="js/firebase.js"></script>
   <script src="js/chat.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/main.js"></script>
+  <script>
+    // UI.init() chama renderLogin() que injeta o HTML da tela de login
+    UI.init();
+  </script>
 </body>
 </html>

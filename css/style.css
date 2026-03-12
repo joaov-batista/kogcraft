@@ -326,3 +326,285 @@ body {
   from { opacity:0; transform: translateY(5px); }
   to   { opacity:1; transform: translateY(0); }
 }
+
+/* ══════════════════════════════════════
+   HOTBAR (inventário 3 slots)
+══════════════════════════════════════ */
+#hotbar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 30;
+}
+.hotbar-slot {
+  width: 56px; height: 56px;
+  background: #00000088;
+  backdrop-filter: blur(4px);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.hotbar-slot.active { border-color: var(--accent); box-shadow: 0 0 10px #00e5ff55; }
+.hb-icon  { font-size: 22px; line-height: 1; }
+.hb-label { font-size: 8px; color: var(--muted); margin-top: 2px; }
+
+/* ══════════════════════════════════════
+   INTERACT PROMPT
+══════════════════════════════════════ */
+#interact-prompt {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #000000aa;
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 8px 20px;
+  font-size: 13px;
+  color: var(--accent);
+  display: none;
+  z-index: 30;
+  pointer-events: none;
+}
+
+/* ══════════════════════════════════════
+   RACE HUD
+══════════════════════════════════════ */
+#race-msg {
+  position: fixed;
+  top: 35%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 28px;
+  color: #fff;
+  text-shadow: 0 0 20px #00e5ff, 0 2px 0 #000;
+  display: none;
+  z-index: 40;
+  pointer-events: none;
+}
+
+/* Car HUD */
+#car-hud {
+  position: fixed;
+  bottom: 90px;
+  right: 20px;
+  background: #00000088;
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 16px;
+  display: none;
+  z-index: 30;
+  min-width: 160px;
+}
+#car-hud .car-hud-title {
+  font-size: 11px; color: var(--muted); margin-bottom: 6px;
+}
+#nitro-wrap {
+  background: #333; border-radius: 4px; height: 8px; width: 140px;
+  overflow: hidden;
+}
+#nitro-bar {
+  height: 100%; width: 100%;
+  background: linear-gradient(90deg, #00aaff, #00ffff);
+  border-radius: 4px;
+  transition: width .1s;
+}
+
+/* Soccer score */
+#soccer-score {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #00000088;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  display: none;
+  z-index: 30;
+}
+
+/* ══════════════════════════════════════
+   SHOP OVERLAY
+══════════════════════════════════════ */
+#shop-overlay {
+  position: fixed; inset: 0;
+  background: #000000bb;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  backdrop-filter: blur(3px);
+}
+
+.shop-box {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: 460px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 0 60px #00e5ff18;
+  animation: cardIn .25s ease;
+}
+.shop-box.wide  { width: 620px; }
+.shop-box.small { width: 360px; }
+
+.shop-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--border);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  color: var(--accent);
+}
+.shop-close {
+  background: none; border: 1px solid var(--border);
+  color: var(--text); border-radius: 6px;
+  padding: 4px 10px; cursor: pointer; font-size: 13px;
+  transition: border-color .15s;
+}
+.shop-close:hover { border-color: var(--accent2); color: var(--accent2); }
+
+.shop-body { padding: 18px 22px; display: flex; flex-direction: column; gap: 14px; }
+
+.shop-section-title {
+  font-size: 12px; font-weight: 700; color: var(--muted);
+  padding: 8px 0 4px; border-top: 1px solid var(--border);
+}
+
+/* Botões da loja */
+.btn-shop {
+  padding: 8px 14px; border: none; border-radius: 8px;
+  font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: opacity .15s;
+}
+.btn-shop:hover { opacity: .85; }
+.btn-shop:disabled { opacity: .4; cursor: default; }
+.btn-buy   { background: var(--accent);  color: #000; }
+.btn-equip { background: var(--accent2); color: #fff; }
+.btn-cyan  { background: var(--accent);  color: #000; }
+
+/* Grade carros */
+.car-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+}
+.car-card {
+  background: var(--panel2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px; text-align: center;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.car-card.owned { border-color: var(--accent); }
+.car-icon { font-size: 32px; margin-bottom: 4px; border-radius: 8px; padding: 8px; }
+.car-name { font-weight: 700; font-size: 14px; }
+.car-speed { font-size: 12px; color: var(--muted); }
+
+/* Melhorias */
+.upgrade-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.upgrade-card {
+  background: var(--panel2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px; text-align: center;
+  display: flex; flex-direction: column; gap: 8px; font-size: 13px;
+}
+.upgrade-card input[type=color] { width: 100%; height: 28px; border: none; border-radius: 4px; cursor: pointer; }
+
+/* Missões */
+.mission-card {
+  background: var(--panel2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 6px;
+}
+.mission-card.done { border-color: #4caf50; }
+.mission-title { font-weight: 700; font-size: 14px; }
+.mission-desc  { font-size: 12px; color: var(--muted); }
+.mission-reward{ font-size: 12px; color: var(--gold); }
+.mission-prog  { display: flex; align-items: center; gap: 10px; font-size: 11px; }
+.prog-bar { flex:1; background: #333; border-radius: 4px; height: 8px; }
+.prog-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width .3s; }
+
+/* Cores */
+.color-grid { display: flex; flex-direction: column; gap: 10px; }
+.color-row  { display: flex; align-items: center; gap: 10px; }
+.color-label{ flex: 1; font-size: 13px; }
+.color-pick { width: 40px; height: 32px; border: none; border-radius: 4px; cursor: pointer; }
+.btn-apply-color { background: var(--accent); color: #000; }
+
+/* ══════════════════════════════════════
+   TOAST
+══════════════════════════════════════ */
+#toast {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #000000cc;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  display: none;
+  z-index: 50;
+  transition: opacity .4s;
+  pointer-events: none;
+}
+
+/* ══════════════════════════════════════
+   INDICADOR DE CÂMERA (F1/F3)
+══════════════════════════════════════ */
+#cam-mode-indicator {
+  position: fixed;
+  top: 52px;
+  right: 16px;
+  background: #00000077;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  z-index: 30;
+  pointer-events: none;
+  letter-spacing: 0.05em;
+}
+
+/* ══════════════════════════════════════
+   CROSSHAIR (mira F1)
+══════════════════════════════════════ */
+#crosshair {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px; height: 24px;
+  display: none;
+  z-index: 35;
+  pointer-events: none;
+}
+#crosshair .ch-h {
+  position: absolute;
+  top: 50%; left: 0;
+  width: 100%; height: 2px;
+  background: rgba(255,255,255,0.85);
+  transform: translateY(-50%);
+  border-radius: 1px;
+}
+#crosshair .ch-v {
+  position: absolute;
+  left: 50%; top: 0;
+  width: 2px; height: 100%;
+  background: rgba(255,255,255,0.85);
+  transform: translateX(-50%);
+  border-radius: 1px;
+}

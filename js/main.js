@@ -1,55 +1,82 @@
-// main.js — Orquestrador principal
+// main.js — Inicializa o jogo na ordem certa
 
 const Main = (() => {
 
-  window.addEventListener('DOMContentLoaded', function() {
-    UI.init();
-  });
-
-  // name = nome visivel no jogo (acima da cabeca)
-  // skin = id da skin escolhida (um, dois, tres...)
-  async function startGame(uid, name, skin, coins) {
-    UI.showLoading();
-    UI.setLoadProgress(0.1);
-
+  function startGame(uid, name, skin, coins) {
+    // 1. Engine + estado
     Engine.init();
-    UI.setLoadProgress(0.2);
+    GameState.init(uid, name, skin, coins);
 
-    Input.init();
-    UI.setLoadProgress(0.3);
-
+    // 2. Mundo
     World.init();
-    UI.setLoadProgress(0.5);
 
-    Players.init();
-    UI.setLoadProgress(0.6);
+    // 3. Input
+    Input.init();
 
-    // Carrega modelo + aplica skin escolhida
+    // 4. Player
     Player.init(skin, name);
-    UI.setLoadProgress(0.75);
 
-    // Presença no Firebase com nome e skin
+    // 5. Multiplayer
+    Players.init();
+
+    // 6. Sistemas do jogo
+    Mobs.init();
+    Cars.init();
+    NPCs.init();
+    Minigames.init();
+
+    // 7. UI
+    Inventory.init();
+    ShopUI.init();
+    ChatSystem.init(uid, name);
+
+    // 8. Firebase presença
     FirebaseManager.startPresence(uid, skin, name);
-    UI.setLoadProgress(0.85);
 
-    // Chat usa o nome do jogador
-    ChatSystem.init(name);
-    UI.setLoadProgress(0.9);
-
-    // HUD mostra o nome
+    // 9. HUD
     UI.setPlayerName(name);
     UI.setCoins(coins);
 
-    Engine.onTick(function() {
-      FirebaseManager.updatePosition(
-        Player.getPosition(),
-        Player.getRotation(),
-        Player.getCurrentAnim()
-      );
+    // 10. Input: tecla E — interação unificada
+    document.addEventListener('keydown', function(e) {
+      if (e.code !== 'KeyE') return;
+      if (!Input.isLocked()) return;
+
+      // Prioridade: NPC > Casa > Carro
+      if (NPCs.interactNearest()) return;
+      checkHouseInteraction();
+      if (Cars.tryEnterExit()) return;
     });
 
-    UI.setLoadProgress(1);
-    setTimeout(function() { UI.hideLoading(); }, 400);
+    // Ataque com F/Clique — só com espada e sem carro
+    document.addEventListener('keydown', function(e) {
+      if (e.code !== 'KeyF') return;
+      if (Cars.isInCar()) return;
+      if (Inventory.isHoldingSword() || true) { // espada sempre disponível
+        Mobs.tryHit(Player.getPosition());
+      }
+    });
+    document.getElementById('game-canvas').addEventListener('mousedown', function(e) {
+      if (e.button !== 0) return;
+      if (!Input.isLocked()) return;
+      if (Cars.isInCar()) return;
+      Mobs.tryHit(Player.getPosition());
+    });
+  }
+
+  // Checa se o jogador está perto de uma casa sem dono
+  function checkHouseInteraction() {
+    var pp     = Player.getPosition();
+    var houses = World.getHouses();
+    for (var i = 0; i < houses.length; i++) {
+      var h = houses[i];
+      if (h.owner) continue;
+      var dx = pp.x - h.ix, dz = pp.z - h.iz;
+      if (Math.sqrt(dx*dx + dz*dz) < 4) {
+        ShopUI.open('claim_house_' + h.idx);
+        return;
+      }
+    }
   }
 
   return { startGame };

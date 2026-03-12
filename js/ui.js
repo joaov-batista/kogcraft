@@ -300,16 +300,20 @@ const UI = (() => {
 
   // ── PAUSE ─────────────────────────────────────────
   function bindPauseButtons() {
-    document.getElementById('btn-resume')?.addEventListener('click', togglePause);
-    document.getElementById('btn-logout')?.addEventListener('click', async function(){
-      await FirebaseManager.logout(); location.reload();
+    // Botões do pause são criados no HTML, precisam de guard
+    var resume = document.getElementById('btn-resume');
+    var logout = document.getElementById('btn-logout');
+    if (resume) resume.addEventListener('click', togglePause);
+    if (logout) logout.addEventListener('click', function(){
+      FirebaseManager.logout().then(function(){ location.reload(); });
     });
   }
 
   function togglePause() {
     paused = !paused;
-    Engine.setPaused(paused);
-    document.getElementById('menu-pause').classList.toggle('hidden', !paused);
+    if (typeof Engine !== 'undefined') Engine.setPaused(paused);
+    var mp = document.getElementById('menu-pause');
+    if (mp) mp.classList.toggle('hidden', !paused);
   }
 
   // ── LOADING ───────────────────────────────────────

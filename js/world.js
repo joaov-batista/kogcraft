@@ -1,327 +1,490 @@
-// ═══════════════════════════════════════════════
-//  WORLD.JS — Cidade KOG: terreno, ruas, casas
-// ═══════════════════════════════════════════════
+// world.js — KOG City Map  (refeito limpo)
+//
+// LAYOUT Z (câmera olha para Z+):
+//   z = -130..-90   ZONA DE MOBS
+//   z = -85..-52    PISTA DE CORRIDA
+//   z = -40..+40    CIDADE
+//   z = +48..+90    QUADRA DE FUTEBOL
+//
+// Todos os PLANOS de chão ficam em Y = 0 (receiveShadow, sem colisão).
+// Walls/colisores ficam Y > 0.
+// A estrada é um plano em Y = 0.02 (ligeiramente acima do chão-grama).
 
 const World = (() => {
 
-  const scene = () => Engine.getScene();
+  var _sc = function() { return Engine.getScene(); };
 
-  // Mapeamento de dono por casa (índice 0-9)
-  const HOUSE_OWNERS = [
-    'joao','edson','rafa','leo','brisa',
-    'taiana','eduarda','gabriella','kat','debora'
-  ];
+  // ── Casas ───────────────────────────────────
+  var houses     = [];   // dados de interação
+  var houseParts = [];   // meshes modificáveis
 
-  // Cores por jogador
-  const PLAYER_COLORS = {
-    joao:      0x4fc3f7, edson:    0xef5350, rafa:      0x66bb6a,
-    leo:       0xffa726, brisa:    0xab47bc, taiana:    0xec407a,
-    eduarda:   0x26c6da, gabriella:0x8d6e63, kat:       0xd4e157,
-    debora:    0xff7043,
-  };
+  // ── MATERIAIS REUTILIZÁVEIS ─────────────────
+  var _mats = {};
+  function mat(hex, alpha) {
+    var k = hex + (alpha||1);
+    if (_mats[k]) return _mats[k];
+    var o = new THREE.MeshLambertMaterial({ color: hex });
+    if (alpha && alpha < 1) { o.transparent = true; o.opacity = alpha; }
+    _mats[k] = o;
+    return o;
+  }
 
-  // Materiais reutilizáveis
-  const MAT = {
-    road:    new THREE.MeshLambertMaterial({ color: 0x444455 }),
-    sidewalk:new THREE.MeshLambertMaterial({ color: 0x8899aa }),
-    grass:   new THREE.MeshLambertMaterial({ color: 0x4caf50 }),
-    roof:    new THREE.MeshLambertMaterial({ color: 0xc62828 }),
-    wall:    new THREE.MeshLambertMaterial({ color: 0xfff9c4 }),
-    window:  new THREE.MeshLambertMaterial({ color: 0x90caf9, transparent: true, opacity: 0.7 }),
-    door:    new THREE.MeshLambertMaterial({ color: 0x6d4c41 }),
-    fence:   new THREE.MeshLambertMaterial({ color: 0xbcaaa4 }),
-    stripe:  new THREE.MeshLambertMaterial({ color: 0xffffff }),
-    tree_t:  new THREE.MeshLambertMaterial({ color: 0x2e7d32 }),
-    tree_s:  new THREE.MeshLambertMaterial({ color: 0x5d4037 }),
-    track:   new THREE.MeshLambertMaterial({ color: 0x37474f }),
-    sand:    new THREE.MeshLambertMaterial({ color: 0xf9a825 }),
-    goal:    new THREE.MeshLambertMaterial({ color: 0xffffff }),
-    field:   new THREE.MeshLambertMaterial({ color: 0x388e3c }),
-  };
+  // ── GEOMETRIAS REUTILIZÁVEIS ─────────────────
+  var _geos = {};
+  function boxGeo(w,h,d) {
+    var k = w+'x'+h+'x'+d;
+    if (!_geos[k]) _geos[k] = new THREE.BoxGeometry(w,h,d);
+    return _geos[k];
+  }
 
-  function box(w, h, d, mat, x, y, z, rx=0, ry=0) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  // ── HELPERS ─────────────────────────────────
+  // Plano de chão — sem colisão, Y fixo
+  function gfloor(w, d, hex, x, z, y) {
+    y = y || 0.01;
+    var m = new THREE.Mesh(new THREE.PlaneGeometry(w, d),
+      new THREE.MeshLambertMaterial({ color: hex }));
+    m.rotation.x = -Math.PI/2;
     m.position.set(x, y, z);
-    m.rotation.set(rx, ry, 0);
-    m.castShadow = true; m.receiveShadow = true;
-    scene().add(m);
+    m.receiveShadow = true;
+    _sc().add(m);
+    return m;
+  }
+
+  // Caixa com colisão
+  function box(w, h, d, hex, x, y, z, ry, alpha) {
+    var m = new THREE.Mesh(boxGeo(w,h,d), mat(hex, alpha));
+    m.position.set(x, y, z);
+    if (ry) m.rotation.y = ry;
+    m.castShadow   = true;
+    m.receiveShadow = true;
+    _sc().add(m);
     Physics.registerCollider(m);
     return m;
   }
 
-  function flat(w, d, mat, x, z) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.2, d), mat);
-    m.position.set(x, 0, z);
-    m.receiveShadow = true;
-    scene().add(m);
-    return m; // sem colisão vertical para chão
+  // Caixa SEM colisão (decoração)
+  function deco(w, h, d, hex, x, y, z, ry) {
+    var m = new THREE.Mesh(boxGeo(w,h,d), mat(hex));
+    m.position.set(x, y, z);
+    if (ry) m.rotation.y = ry;
+    m.castShadow = true;
+    _sc().add(m);
+    return m;
   }
 
+  // Cilindro
+  function cyl(rt, rb, h, seg, hex, x, y, z) {
+    var m = new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg), mat(hex));
+    m.position.set(x,y,z);
+    m.castShadow = true; m.receiveShadow = true;
+    _sc().add(m);
+    Physics.registerCollider(m);
+    return m;
+  }
+
+  // Cone
+  function cone(r, h, seg, hex, x, y, z, ry) {
+    var m = new THREE.Mesh(new THREE.ConeGeometry(r,h,seg), mat(hex));
+    m.position.set(x,y,z);
+    if (ry) m.rotation.y = ry;
+    m.castShadow = true;
+    _sc().add(m);
+    return m;
+  }
+
+  // Sprite de texto
+  function label(text, x, y, z, scaleX, color) {
+    scaleX = scaleX || 5; color = color || '#00e5ff';
+    var c = document.createElement('canvas');
+    c.width = 320; c.height = 64;
+    var ctx = c.getContext('2d');
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.roundRect(2,2,316,60,10); ctx.fill();
+    ctx.fillStyle = color;
+    ctx.font = 'bold 24px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(text, 160, 42);
+    var sp = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: new THREE.CanvasTexture(c), transparent:true, depthTest:false
+    }));
+    sp.scale.set(scaleX, scaleX*0.2, 1);
+    sp.position.set(x,y,z);
+    _sc().add(sp);
+    return sp;
+  }
+
+  // Árvore
+  function tree(x, z) {
+    cyl(0.22, 0.28, 2.8, 6, 0x5d4037, x, 1.4, z);
+    cone(1.8, 2.8, 7, 0x2e7d32, x, 4.0, z);
+    cone(1.3, 2.2, 7, 0x388e3c, x, 5.4, z);
+    cone(0.8, 1.8, 7, 0x43a047, x, 6.5, z);
+  }
+
+  // Poste
+  function lamp(x, z) {
+    cyl(0.07, 0.09, 5.5, 6, 0x607d8b, x, 2.75, z);
+    var pt = new THREE.PointLight(0xfffbe0, 0.9, 22);
+    pt.position.set(x, 6, z);
+    _sc().add(pt);
+    var cap = new THREE.Mesh(new THREE.SphereGeometry(0.18,6,4),
+      new THREE.MeshLambertMaterial({ color:0xffffcc, emissive:0xffff44, emissiveIntensity:0.7 }));
+    cap.position.set(x,6,z); _sc().add(cap);
+  }
+
+  // ══════════════════════════════════════════════
+  //  INIT
+  // ══════════════════════════════════════════════
   function init() {
-    buildGround();
-    buildRoads();
-    buildHouses();
-    buildTrees();
+    buildBaseGround();
+    buildCity();
     buildRaceTrack();
-    buildSoccerField();
-    buildLamps();
-    buildFountain();
+    buildMobZone();
+    buildSoccer();
   }
 
-  // ── CHÃO BASE ────────────────────────────────
-  function buildGround() {
-    const geo = new THREE.PlaneGeometry(300, 300);
-    const mat = new THREE.MeshLambertMaterial({ color: 0x4caf50 });
-    const ground = new THREE.Mesh(geo, mat);
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
-    scene().add(ground);
+  // ── CHÃO BASE (grama) ────────────────────────
+  function buildBaseGround() {
+    // Um grande plano de grama
+    gfloor(500, 500, 0x5aad50, 0, 0, 0);
   }
 
-  // ── RUAS ─────────────────────────────────────
-  function buildRoads() {
-    // Rua principal H  (z=0)
-    flat(160, 10, MAT.road, 0, 0);
-    // Rua principal V  (x=0)
-    flat(10, 160, MAT.road, 0, 0);
+  // ══════════════════════════════════════════════
+  //  CIDADE   z = -40..+40,  x = -100..+100
+  // ══════════════════════════════════════════════
+  function buildCity() {
+    // Grama do bairro (sobre a grama base)
+    gfloor(200, 90, 0x62b854, 0, 0, 0.005);
 
-    // Calçadas
-    flat(160, 2, MAT.sidewalk, 0, -6);
-    flat(160, 2, MAT.sidewalk, 0,  6);
-    flat(2, 160, MAT.sidewalk, -6, 0);
-    flat(2, 160, MAT.sidewalk,  6, 0);
+    // ── RUAS (Y = 0.02, acima da grama) ──
+    var roadY = 0.02;
+    // Rua leste-oeste (z=0)
+    gfloor(200, 10, 0x3a3a42, 0, 0, roadY);
+    // Rua norte-sul (x=0)
+    gfloor(10, 90, 0x3a3a42, 0, 0, roadY);
 
-    // Listras brancas (faixas de pedestres)
-    for (let i = -4; i <= 4; i += 2) {
-      flat(0.8, 5, MAT.stripe, i, 7.5);
-      flat(0.8, 5, MAT.stripe, i,-7.5);
-      flat(5, 0.8, MAT.stripe, 7.5, i);
-      flat(5, 0.8, MAT.stripe,-7.5, i);
+    // Calçadas (Y = 0.015, entre grama e rua)
+    var swY = 0.015;
+    gfloor(200, 1.8, 0x9aabb8, 0, -5.9, swY);
+    gfloor(200, 1.8, 0x9aabb8, 0,  5.9, swY);
+    gfloor(1.8, 90,  0x9aabb8, -5.9, 0, swY);
+    gfloor(1.8, 90,  0x9aabb8,  5.9, 0, swY);
+
+    // Faixas de pedestres
+    var cwY = 0.025;
+    for (var ci = -2; ci <= 2; ci++) {
+      gfloor(1.2, 4.5, 0xffffff,  ci*1.4,  8.2, cwY);
+      gfloor(1.2, 4.5, 0xffffff,  ci*1.4, -8.2, cwY);
+      gfloor(4.5, 1.2, 0xffffff,  8.2, ci*1.4, cwY);
+      gfloor(4.5, 1.2, 0xffffff, -8.2, ci*1.4, cwY);
     }
+
+    // Praça central
+    gfloor(18, 18, 0x8d9e7a, 0, 0, 0.01);
+    buildFountain();
+
+    // Oito casas
+    var HXS = [-45, -15, 15, 45];
+    HXS.forEach(function(hx, i) {
+      buildHouse(hx, -28, i);
+      buildHouse(hx,  28, i+4);
+    });
+
+    // Árvores da cidade
+    [[-68,-18],[-68,0],[-68,18],[68,-18],[68,0],[68,18],
+     [-32,-44],[0,-44],[32,-44],[-32,44],[0,44],[32,44],
+     [-55,-52],[55,-52],[-55,52],[55,52]].forEach(function(t){ tree(t[0],t[1]); });
+
+    // Postes
+    [[-20,-8],[20,-8],[-20,8],[20,8],[-44,-8],[44,-8],[-44,8],[44,8]].forEach(function(l){ lamp(l[0],l[1]); });
+
+    // Label da cidade
+    label('🏙 KOG CITY', 0, 4, -42, 6, '#ffd740');
   }
 
-  // ── CASAS ────────────────────────────────────
-  function buildHouses() {
-    // 5 casas lado norte, 5 lado sul
-    // Layout: x de -40 a +40, z = ±20
-    const positions = [
-      [-40,-20], [-20,-20], [0,-20], [20,-20], [40,-20],
-      [-40, 20], [-20, 20], [0, 20], [20, 20], [40, 20],
-    ];
+  // ── CASA MODULAR ─────────────────────────────
+  function buildHouse(x, z, idx) {
+    var dir   = z < 0 ? -1 : 1; // -1=norte, +1=sul
+    var front = z + dir*4.5;     // face frontal da casa
 
-    positions.forEach(([x, z], i) => {
-      buildHouse(x, z, HOUSE_OWNERS[i], PLAYER_COLORS[HOUSE_OWNERS[i]]);
+    // Lote de grama clara
+    gfloor(24, 20, 0x72c85a, x, z + dir*0.5, 0.008);
+
+    // Paredes (4 lados separados — modificáveis)
+    var wm = mat(0xf5e6c8);
+    var wFront = new THREE.Mesh(boxGeo(10,4,0.22), wm);
+    wFront.position.set(x, 2, front);
+    wFront.castShadow = true; wFront.receiveShadow = true;
+    _sc().add(wFront); Physics.registerCollider(wFront);
+
+    var wBack  = new THREE.Mesh(boxGeo(10,4,0.22), wm);
+    wBack.position.set(x, 2, z - dir*4.5);
+    wBack.castShadow = true; wBack.receiveShadow = true;
+    _sc().add(wBack); Physics.registerCollider(wBack);
+
+    var wLeft  = box(0.22, 4, 9, 0xf5e6c8, x-5, 2, z);
+    var wRight = box(0.22, 4, 9, 0xf5e6c8, x+5, 2, z);
+    box(10, 0.22, 9, 0xf5e6c8, x, 4.11, z); // teto fechado
+
+    // Telhado cone (4 lados = mais "casa")
+    var rm = mat(0xc0392b);
+    var roof = new THREE.Mesh(new THREE.ConeGeometry(8, 3.5, 4), rm);
+    roof.position.set(x, 6, z);
+    roof.rotation.y = Math.PI/4;
+    roof.castShadow = true; _sc().add(roof);
+
+    // Porta
+    deco(1.4, 2.4, 0.15, 0x6d4c41, x, 1.2, front + dir*0.08);
+
+    // Janelas
+    var wim = mat(0x90caf9, 0.8);
+    var winL = new THREE.Mesh(boxGeo(1.5,1.1,0.12), wim);
+    winL.position.set(x-2.8, 2.6, front + dir*0.1); _sc().add(winL);
+    var winR = new THREE.Mesh(boxGeo(1.5,1.1,0.12), wim);
+    winR.position.set(x+2.8, 2.6, front + dir*0.1); _sc().add(winR);
+
+    // Cerca
+    var fence = mat(0xd7ccc8);
+    for (var fi = -4; fi <= 4; fi += 2) {
+      deco(0.2, 0.9, 0.2, 0xd7ccc8, x+fi, 0.45, z + dir*5.6);
+    }
+    deco(9, 0.12, 0.12, 0xd7ccc8, x, 0.9, z + dir*5.6);
+
+    // Flores
+    var fl1 = buildFlower(x-1.5, z + dir*5.0);
+    var fl2 = buildFlower(x+1.5, z + dir*5.0);
+
+    // Garagem separada ao lado
+    var gx = x + (x < 0 ? -7.5 : 7.5);
+    var garParts = buildGarage(gx, z, dir);
+
+    // Salva partes modificáveis
+    houseParts[idx] = {
+      walls:  [wFront, wBack, wLeft, wRight],
+      roof:   roof,
+      winL:   winL,
+      winR:   winR,
+      garWall: garParts.wall,
+      garRoof: garParts.roof,
+      flowers: [fl1, fl2],
+    };
+
+    // Dados de interação (ponto de entrada na frente)
+    houses.push({
+      idx: idx, x: x, z: z, owner: null, nameSprite: null,
+      ix: x, iz: z + dir*6.2,
     });
   }
 
-  function buildHouse(x, z, owner, color) {
-    const wallMat = new THREE.MeshLambertMaterial({ color: 0xfff9c4 });
-    const accentMat = new THREE.MeshLambertMaterial({ color });
-
-    // Base / chão da casa
-    flat(12, 10, accentMat, x, z + (z < 0 ? -1 : 1));
-
-    // Paredes
-    box(10, 4, 8, wallMat, x, 2.2, z);
-
-    // Teto (pirâmide aproximada com box inclinado)
-    const roofMat = new THREE.MeshLambertMaterial({ color });
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(7.5, 3, 4), roofMat);
-    roof.rotation.y = Math.PI / 4;
-    roof.position.set(x, 5.5, z);
-    roof.castShadow = true;
-    scene().add(roof);
-
-    // Porta
-    box(1.2, 2.2, 0.15, MAT.door, x, 1.1, z + (z < 0 ? -4.1 : 4.1));
-
-    // Janelas
-    box(1.4, 1, 0.1, MAT.window, x - 2.5, 2.5, z + (z < 0 ? -4.1 : 4.1));
-    box(1.4, 1, 0.1, MAT.window, x + 2.5, 2.5, z + (z < 0 ? -4.1 : 4.1));
-
-    // Cerca
-    buildFence(x, z);
-
-    // Nome do dono acima da porta (sprite texto)
-    addNameTag(owner, x, 7.5, z);
+  function buildFlower(x, z) {
+    cyl(0.04, 0.04, 0.4, 5, 0x388e3c, x, 0.2, z);
+    var petals = new THREE.Mesh(new THREE.SphereGeometry(0.18,7,5), mat(0xff4081));
+    petals.position.set(x, 0.44, z); _sc().add(petals);
+    return { petals: petals };
   }
 
-  function buildFence(x, z) {
-    const sign = z < 0 ? -1 : 1;
-    // Lateral
-    for (let i = -5; i <= 5; i += 2) {
-      box(0.2, 1, 0.2, MAT.fence, x + i, 0.5, z + sign * 5.5);
-    }
-    box(10, 0.2, 0.15, MAT.fence, x, 1, z + sign * 5.5);
+  function buildGarage(x, z, dir) {
+    gfloor(9, 9, 0x2c2c3a, x, z, 0.009);
+    var gWall = box(9, 3.5, 8, 0x546e7a, x, 1.75, z);
+    var gRoof = deco(9.4, 0.22, 8.4, 0x37474f, x, 3.62, z);
+    // Porta da garagem (abertura na face frontal)
+    deco(5.5, 3.0, 0.1, 0x607d8b, x, 1.5, z + dir*4.02);
+    return { wall: gWall, roof: gRoof };
   }
 
-  function addNameTag(name, x, y, z) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 256; canvas.height = 64;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#00000088';
-    ctx.roundRect(0, 0, 256, 64, 10);
-    ctx.fill();
-    ctx.fillStyle = '#00e5ff';
-    ctx.font = 'bold 28px Nunito, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(name.toUpperCase(), 128, 42);
-
-    const tex = new THREE.CanvasTexture(canvas);
-    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
-    const sprite = new THREE.Sprite(mat);
-    sprite.position.set(x, y, z);
-    sprite.scale.set(4, 1, 1);
-    Engine.getScene().add(sprite);
+  // ── FONTE ────────────────────────────────────
+  function buildFountain() {
+    box(5.5, 0.55, 5.5, 0x90a4ae, 0, 0.28, 0);
+    var torus = new THREE.Mesh(new THREE.TorusGeometry(2.4,0.2,6,18), mat(0x90a4ae));
+    torus.rotation.x = Math.PI/2; torus.position.set(0, 0.62, 0); _sc().add(torus);
+    var water = new THREE.Mesh(new THREE.CylinderGeometry(2.1,2.1,0.12,18), mat(0x4fc3f7, 0.8));
+    water.position.set(0, 0.62, 0); _sc().add(water);
+    cyl(0.22,0.22,2,6,0x90a4ae,0,1.35,0);
   }
 
-  // ── ÁRVORES ──────────────────────────────────
-  function buildTrees() {
-    const spots = [
-      [-50,-50],[-30,-50],[30,-50],[50,-50],
-      [-50, 50],[-30, 50],[30, 50],[50, 50],
-      [-60,  0],[ 60,  0],[ 0,-60],[ 0, 60],
-      [-15,-15],[ 15,-15],[-15, 15],[15,  15],
-    ];
-    for (const [x, z] of spots) addTree(x, z);
-  }
-
-  function addTree(x, z) {
-    // Tronco
-    const trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.25, 0.35, 2, 6),
-      MAT.tree_s
-    );
-    trunk.position.set(x, 1, z);
-    trunk.castShadow = true;
-    scene().add(trunk);
-    Physics.registerCollider(trunk);
-
-    // Copa (3 esferas empilhadas)
-    const sizes = [[1.4, 2.5], [1.1, 3.8], [0.8, 4.8]];
-    for (const [r, y] of sizes) {
-      const top = new THREE.Mesh(
-        new THREE.IcosahedronGeometry(r, 0),
-        MAT.tree_t
-      );
-      top.position.set(x, y, z);
-      top.castShadow = true;
-      scene().add(top);
-    }
-  }
-
-  // ── PISTA DE CORRIDA ─────────────────────────
+  // ══════════════════════════════════════════════
+  //  PISTA DE CORRIDA   z = -85..-52
+  // ══════════════════════════════════════════════
   function buildRaceTrack() {
-    // Reta principal: x de -70 a 70, z = -80
-    flat(150, 12, MAT.track, 0, -80);
-    // Listras laterais
-    flat(150, 0.5, MAT.stripe, 0, -74.5);
-    flat(150, 0.5, MAT.stripe, 0, -85.5);
-    // Linha de largada
-    for (let i = -5; i <= 5; i += 2) {
-      flat(1.5, 0.8, MAT.stripe, i * 3, -80);
+    var CZ = -68; // centro Z da pista
+
+    // Grama ao redor da pista
+    gfloor(220, 48, 0x4a9e40, 0, CZ, 0.005);
+
+    // Asfalto principal — Y=0.02 (acima da grama)
+    var trackY = 0.02;
+    gfloor(170, 20, 0x2c2c38, 0, CZ, trackY);
+
+    // Linhas laterais brancas
+    gfloor(170, 0.45, 0xffffff, 0, CZ-10, trackY+0.001);
+    gfloor(170, 0.45, 0xffffff, 0, CZ+10, trackY+0.001);
+
+    // Linha central tracejada
+    for (var xi = -82; xi < 82; xi += 8) {
+      gfloor(4, 0.3, 0xffffff, xi, CZ, trackY+0.002);
     }
-    // Barreiras
-    for (let x = -75; x <= 75; x += 5) {
-      box(4, 0.8, 0.8, new THREE.MeshLambertMaterial({ color: 0xe53935 }), x, 0.5, -74);
-      box(4, 0.8, 0.8, new THREE.MeshLambertMaterial({ color: 0xe53935 }), x, 0.5, -86);
+
+    // Xadrez largada (x=-62) e chegada (x=+62)
+    for (var ci = 0; ci < 10; ci++) {
+      var even = ci % 2 === 0;
+      gfloor(0.65, 2.2, even ? 0xffffff : 0x111111, -62, CZ-4.9+ci*2, trackY+0.003);
+      gfloor(0.65, 2.2, even ? 0x111111 : 0xffffff, -62, CZ-3.8+ci*2, trackY+0.003);
+      gfloor(0.65, 2.2, even ? 0xffffff : 0x111111,  62, CZ-4.9+ci*2, trackY+0.003);
+      gfloor(0.65, 2.2, even ? 0x111111 : 0xffffff,  62, CZ-3.8+ci*2, trackY+0.003);
     }
-    // Tribuna (arquibancada simples)
-    box(30, 3, 4, new THREE.MeshLambertMaterial({ color: 0x546e7a }), 0, 1.6, -70);
+
+    // Barreiras (colisão)
+    for (var bx = -84; bx <= 84; bx += 5) {
+      var red = (Math.floor(bx/5) % 2 === 0);
+      box(4.5, 0.85, 0.75, red ? 0xe53935 : 0xffffff, bx, 0.42, CZ-11.5);
+      box(4.5, 0.85, 0.75, red ? 0xffffff : 0xe53935, bx, 0.42, CZ+11.5);
+    }
+
+    // Arquibancada (sul da pista)
+    box(55, 3.5, 4.5, 0x546e7a, 0, 1.75, CZ+16);
+    box(55, 2.5, 3.5, 0x4a6070, 0, 3.2,  CZ+18.5);
+    box(55, 1.5, 2.5, 0x405565, 0, 4.25, CZ+20.5);
+
+    // Árvores e postes
+    for (var tx = -85; tx <= 85; tx += 18) { tree(tx, CZ+24); tree(tx, CZ-24); }
+    [[-62,CZ+14],[0,CZ+14],[62,CZ+14],[-62,CZ-14],[0,CZ-14],[62,CZ-14]].forEach(function(l){ lamp(l[0],l[1]); });
+
+    label('🏁 LARGADA', -62, 3.5, CZ-13, 5, '#ffd740');
+    label('🏁 CHEGADA',  62, 3.5, CZ-13, 5, '#ffd740');
+    label('🏎 PISTA KOG', 0, 2.5, CZ+22, 5, '#00e5ff');
   }
 
-  // ── QUADRA DE FUTEBOL ─────────────────────────
-  function buildSoccerField() {
-    const cx = 0, cz = 80;
-    // Grama
-    const field = new THREE.Mesh(new THREE.BoxGeometry(40, 0.2, 25), MAT.field);
-    field.position.set(cx, 0, cz);
-    field.receiveShadow = true;
-    scene().add(field);
+  // ══════════════════════════════════════════════
+  //  ZONA DE MOBS   z = -90..-130
+  // ══════════════════════════════════════════════
+  function buildMobZone() {
+    // Chão escuro sobre a grama base
+    gfloor(220, 50, 0x1a2e1a, 0, -110, 0.008);
 
-    // Linhas (stripe branca)
-    flat(40, 0.25, MAT.stripe, cx, cz - 12.4);
-    flat(40, 0.25, MAT.stripe, cx, cz + 12.4);
-    flat(0.25, 25, MAT.stripe, cx - 19.9, cz);
-    flat(0.25, 25, MAT.stripe, cx + 19.9, cz);
-    flat(0.25, 25, MAT.stripe, cx, cz);
+    var stone = 0x4a5568;
+
+    // Placa de entrada
+    cyl(0.15,0.15,3.5,5,0x607d8b, -90, 1.75, -90);
+    box(8, 2, 0.2, 0x8b0000, -90, 3.5, -90);
+    label('⚠ ZONA PERIGOSA', -90, 5.2, -90, 6, '#ff4444');
+
+    // Ruínas (decoração + colisão)
+    [[-58,-93],[-35,-106],[-5,-97],[18,-112],[42,-99],[64,-108],[-70,-119]].forEach(function(r) {
+      box(3+Math.random()*2, 2.2+Math.random()*2.5, 3, stone,
+          r[0], 1.2, r[1]);
+    });
+
+    // Árvores sinistras
+    var dk = 0x152015, dt = 0x2d1a0e;
+    [[-68,-91],[-46,-102],[-20,-96],[10,-111],[34,-98],[55,-107],[72,-94]].forEach(function(t) {
+      cyl(0.18,0.26,4.5,5,dt, t[0],2.25,t[1]);
+      cone(2.2,4,5,dk, t[0],5.5,t[1]);
+    });
+
+    // Névoa escura (pontos de luz vermelhos)
+    [[-60,-100],[-30,-115],[0,-105],[30,-120],[60,-100]].forEach(function(l) {
+      var pt = new THREE.PointLight(0x880000, 0.8, 18);
+      pt.position.set(l[0], 2, l[1]); _sc().add(pt);
+    });
+  }
+
+  // ══════════════════════════════════════════════
+  //  QUADRA DE FUTEBOL   z = +50..+90
+  // ══════════════════════════════════════════════
+  function buildSoccer() {
+    var CZ = 70;
+
+    // Grama ao redor
+    gfloor(120, 55, 0x55aa44, 0, CZ, 0.005);
+
+    // Listras do campo
+    for (var si = 0; si < 5; si++) {
+      gfloor(52, 6.8, si%2===0 ? 0x3a9e3a : 0x338833, 0, CZ-17+si*6.8, 0.01);
+    }
+
+    // Linhas (Y = 0.015)
+    var ly = 0.015;
+    gfloor(52, 0.3, 0xffffff, 0, CZ-17, ly); // linha fundo norte
+    gfloor(52, 0.3, 0xffffff, 0, CZ+17, ly); // linha fundo sul
+    gfloor(0.3, 34, 0xffffff, -25.8, CZ, ly); // lateral esq
+    gfloor(0.3, 34, 0xffffff,  25.8, CZ, ly); // lateral dir
+    gfloor(0.3, 34, 0xffffff,  0,    CZ, ly); // meio campo
+    gfloor(10,  0.3, 0xffffff, 0, CZ-10, ly); // área norte
+    gfloor(0.3, 10,  0xffffff, -5, CZ-15, ly);
+    gfloor(0.3, 10,  0xffffff,  5, CZ-15, ly);
+    gfloor(10,  0.3, 0xffffff, 0, CZ+10, ly);
+    gfloor(0.3, 10,  0xffffff, -5, CZ+15, ly);
+    gfloor(0.3, 10,  0xffffff,  5, CZ+15, ly);
+
+    // Círculo central (triângulos em canvas texture)
+    var cc = document.createElement('canvas'); cc.width=cc.height=256;
+    var cctx = cc.getContext('2d');
+    cctx.clearRect(0,0,256,256);
+    cctx.strokeStyle = '#fff'; cctx.lineWidth = 5;
+    cctx.beginPath(); cctx.arc(128,128,110,0,Math.PI*2); cctx.stroke();
+    var circMesh = new THREE.Mesh(new THREE.PlaneGeometry(14,14),
+      new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(cc), transparent:true }));
+    circMesh.rotation.x = -Math.PI/2; circMesh.position.set(0, 0.016, CZ); _sc().add(circMesh);
 
     // Gols
-    buildGoal(cx - 21, cz);
-    buildGoal(cx + 21, cz, true);
+    buildGoal(-26, CZ, true);
+    buildGoal( 26, CZ, false);
 
-    // Traves (postes)
-    buildFieldWalls(cx, cz);
+    // Muros laterais baixos
+    box(52.6, 1.4, 0.28, 0xaaaaaa, 0, 0.7, CZ-17.5);
+    box(52.6, 1.4, 0.28, 0xaaaaaa, 0, 0.7, CZ+17.5);
+    box(0.28, 1.4, 35,   0xaaaaaa, -26.2, 0.7, CZ);
+    box(0.28, 1.4, 35,   0xaaaaaa,  26.2, 0.7, CZ);
 
-    // Placa "QUADRA"
-    addNameTag('⚽ QUADRA', cx, 3, cz - 14);
+    // Arquibancada
+    box(55, 3, 4.5, 0x546e7a, 0, 1.5, CZ+21);
+    box(55, 2, 3.5, 0x4a6070, 0, 2.8, CZ+23.5);
+
+    // Postes
+    lamp(-28, CZ-20); lamp(28, CZ-20); lamp(-28, CZ+20); lamp(28, CZ+20);
+    label('⚽ QUADRA KOG', 0, 3.5, CZ+22.5, 5, '#ffffff');
   }
 
-  function buildGoal(x, z, flip = false) {
-    const d = flip ? -1 : 1;
-    box(0.15, 2.4, 6, MAT.goal, x, 1.2, z);             // poste traseiro
-    box(0.15, 0.15, 6, MAT.goal, x + d * 1.5, 2.4, z);  // barra
-    box(1.5, 2.4, 0.15, MAT.goal, x + d * 0.75, 1.2, z - 3); // lateral
-    box(1.5, 2.4, 0.15, MAT.goal, x + d * 0.75, 1.2, z + 3); // lateral
+  function buildGoal(x, cz, facingRight) {
+    var gm = 0xeeeeee;
+    var d = facingRight ? 2 : -2; // profundidade do gol
+    // Postes verticais
+    box(0.18,3,0.18,gm, x, 1.5, cz-3);
+    box(0.18,3,0.18,gm, x, 1.5, cz+3);
+    // Travessão
+    box(0.18,0.18,6.4,gm, x, 3.1, cz);
+    // Rede traseira (visual)
+    box(Math.abs(d), 3, 0.08, 0xdddddd, x+d/2, 1.5, cz-3, 0, 0.35);
+    box(Math.abs(d), 3, 0.08, 0xdddddd, x+d/2, 1.5, cz+3, 0, 0.35);
+    box(0.08, 3, 6.4, 0xdddddd, x+d, 1.5, cz, 0, 0.35);
+    box(Math.abs(d), 0.08, 6.4, 0xdddddd, x+d/2, 3.1, cz, 0, 0.35);
   }
 
-  function buildFieldWalls(cx, cz) {
-    // Muros ao redor da quadra
-    box(40, 1.5, 0.3, MAT.fence, cx, 0.75, cz - 13);
-    box(40, 1.5, 0.3, MAT.fence, cx, 0.75, cz + 13);
-    box(0.3, 1.5, 25, MAT.fence, cx - 20, 0.75, cz);
-    box(0.3, 1.5, 25, MAT.fence, cx + 20, 0.75, cz);
+  // ── API PÚBLICA ───────────────────────────────
+  function getHouses()   { return houses; }
+
+  function claimHouse(idx, playerName) {
+    var h = houses[idx];
+    if (!h || h.owner) return false;
+    h.owner = playerName;
+    if (h.nameSprite) _sc().remove(h.nameSprite);
+    h.nameSprite = label('🏠 ' + playerName, h.x, 9, h.z, 5.5, '#ffd740');
+    return true;
   }
 
-  // ── POSTES ───────────────────────────────────
-  function buildLamps() {
-    const spots = [
-      [-20,-5],[20,-5],[-20,5],[20,5],
-      [-20,-75],[20,-75],[-20,-85],[20,-85],
-    ];
-    for (const [x, z] of spots) buildLamp(x, z);
+  function setHousePartColor(idx, part, hex) {
+    var p = houseParts[idx];
+    if (!p) return;
+    var c = new THREE.Color().setStyle(hex);
+    var apply = function(m) { if (m && m.material && m.material.color) m.material.color.copy(c); };
+    if (part === 'wall')   p.walls.forEach(apply);
+    if (part === 'roof')   apply(p.roof);
+    if (part === 'window') { apply(p.winL); apply(p.winR); }
+    if (part === 'garage') { apply(p.garWall); apply(p.garRoof); }
+    if (part === 'flower') {
+      p.flowers.forEach(function(f) { if (f && f.petals) f.petals.material.color.copy(c); });
+    }
   }
 
-  function buildLamp(x, z) {
-    const poleMat = new THREE.MeshLambertMaterial({ color: 0x607d8b });
-    box(0.2, 5, 0.2, poleMat, x, 2.5, z);
-    // luz pontual
-    const light = new THREE.PointLight(0xfffbe0, 0.8, 18);
-    light.position.set(x, 5.5, z);
-    scene().add(light);
-    // Cúpula
-    const cap = new THREE.Mesh(
-      new THREE.SphereGeometry(0.3, 6, 4),
-      new THREE.MeshLambertMaterial({ color: 0xffffe0, emissive: 0xffff88 })
-    );
-    cap.position.set(x, 5.5, z);
-    scene().add(cap);
-  }
-
-  // ── FONTE CENTRAL ─────────────────────────────
-  function buildFountain() {
-    const baseMat = new THREE.MeshLambertMaterial({ color: 0x90a4ae });
-    const waterMat = new THREE.MeshLambertMaterial({ color: 0x4fc3f7, transparent: true, opacity: 0.75 });
-
-    // Base
-    box(4, 0.5, 4, baseMat, 0, 0.25, 0);
-    // Borda
-    const geo = new THREE.TorusGeometry(2, 0.2, 6, 12);
-    const torus = new THREE.Mesh(geo, baseMat);
-    torus.rotation.x = Math.PI / 2;
-    torus.position.set(0, 0.6, 0);
-    scene().add(torus);
-    // Água
-    const water = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 0.2, 12), waterMat);
-    water.position.set(0, 0.6, 0);
-    scene().add(water);
-    // Pilar central
-    box(0.4, 2, 0.4, baseMat, 0, 1.25, 0);
-  }
-
-  // Retorna lista de owners para outros módulos
-  function getHouseOwners() { return HOUSE_OWNERS; }
-  function getPlayerColor(name) { return PLAYER_COLORS[name] || 0xffffff; }
-
-  return { init, getHouseOwners, getPlayerColor };
+  return { init, getHouses, claimHouse, setHousePartColor };
 })();

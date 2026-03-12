@@ -14,6 +14,7 @@ const Input = (() => {
     'KeyQ','KeyF','KeyG','KeyE',
     'Space','ShiftLeft','ShiftRight',
     'ArrowUp','ArrowDown','ArrowLeft','ArrowRight',
+    'F1','F3',
   ]);
 
   function init() {

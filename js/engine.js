@@ -75,11 +75,12 @@ const Engine = (() => {
   }
 
   function onTick(cb)    { animCallbacks.push(cb); }
+  function removeTick(cb){ animCallbacks = animCallbacks.filter(function(x){ return x !== cb; }); }
   function setPaused(v)  { paused = v; if (!v) clock.getDelta(); }
   function getScene()    { return scene; }
   function getCamera()   { return camera; }
   function getRenderer() { return renderer; }
   function getClock()    { return clock; }
 
-  return { init, onTick, setPaused, getScene, getCamera, getRenderer, getClock };
+  return { init, onTick, removeTick, setPaused, getScene, getCamera, getRenderer, getClock };
 })();
