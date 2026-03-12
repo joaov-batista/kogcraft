@@ -1,0 +1,328 @@
+/* ── RESET ───────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #0d0f1a;
+  --panel:    #131624;
+  --panel2:   #1a1f35;
+  --border:   #252b45;
+  --accent:   #00e5ff;
+  --accent2:  #ff4081;
+  --gold:     #ffd740;
+  --text:     #dde3ff;
+  --muted:    #5c6490;
+  --radius:   10px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Nunito', sans-serif;
+  overflow: hidden;
+  width: 100vw; height: 100vh;
+}
+
+.hidden { display: none !important; }
+
+/* ═══════════════════════════════════════════════════
+   AUTH — container externo
+════════════════════════════════════════════════════ */
+#screen-login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw; height: 100vh;
+  background: radial-gradient(ellipse at 50% 25%, #1b2040 0%, #0d0f1a 65%);
+}
+
+/* Card branco-azul escuro */
+#auth-box {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 36px 32px;
+  width: auto;
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 0 80px #00e5ff12, 0 8px 32px #00000060;
+  animation: cardIn .3s ease;
+}
+
+@keyframes cardIn {
+  from { opacity:0; transform: translateY(14px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+
+/* Título */
+#auth-box .auth-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 20px;
+  color: var(--accent);
+  text-align: center;
+  text-shadow: 0 0 24px var(--accent);
+  letter-spacing: 2px;
+}
+
+#auth-box .auth-sub {
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: -8px;
+}
+
+/* Inputs */
+#auth-box input[type="text"],
+#auth-box input[type="email"],
+#auth-box input[type="password"] {
+  width: 100%;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: 'Nunito', sans-serif;
+  font-size: 14px;
+  padding: 11px 15px;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+#auth-box input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px #00e5ff22;
+}
+
+/* Botões */
+#auth-box .btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: var(--radius);
+  font-family: 'Nunito', sans-serif;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: opacity .18s, transform .12s;
+}
+#auth-box .btn:hover  { opacity: .87; transform: translateY(-1px); }
+#auth-box .btn:active { transform: translateY(0); opacity: 1; }
+#auth-box .btn-cyan  { background: var(--accent);  color: #000; }
+#auth-box .btn-pink  { background: var(--accent2); color: #fff; }
+#auth-box .btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--accent);
+  font-size: 13px;
+  padding: 9px;
+}
+#auth-box .btn-ghost:hover { border-color: var(--accent); background: #00e5ff0d; opacity:1; }
+
+/* Mensagem de erro/info */
+#auth-box .auth-msg {
+  text-align: center;
+  font-size: 12px;
+  min-height: 15px;
+  color: var(--accent2);
+}
+#auth-box .auth-msg.ok { color: #00e5aa; }
+
+/* Link de rodapé */
+#auth-box .auth-footer {
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+#auth-box .auth-footer a {
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  background: none; border: none;
+  font-family: 'Nunito', sans-serif;
+  font-size: 12px;
+}
+
+/* ── Login layout: 2 colunas ──────────────────────── */
+.login-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.login-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.login-right {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  min-width: 230px;
+  padding-top: 4px;
+}
+
+/* Preview 3D */
+#preview-canvas {
+  width: 155px;
+  height: 195px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  cursor: grab;
+  display: block;
+}
+#preview-canvas:active { cursor: grabbing; }
+
+.preview-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.preview-hint {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: -4px;
+}
+
+/* Grade de skins */
+.skin-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+}
+
+.skin-card {
+  background: var(--panel2);
+  border: 2px solid var(--border);
+  border-radius: 7px;
+  padding: 4px 2px 3px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  font-size: 9px;
+  color: var(--muted);
+  user-select: none;
+}
+.skin-card canvas {
+  width: 28px !important;
+  height: 28px !important;
+  image-rendering: pixelated;
+  border-radius: 3px;
+}
+.skin-card:hover    { border-color: var(--accent); color: var(--accent); }
+.skin-card.selected {
+  border-color: var(--accent);
+  background: #0a2535;
+  color: var(--accent);
+  box-shadow: 0 0 8px #00e5ff33;
+}
+
+/* ═══════════════════════════════════════════════════
+   GAME
+════════════════════════════════════════════════════ */
+#screen-game { position: fixed; inset: 0; }
+#game-canvas  { display: block; width: 100%; height: 100%; }
+
+/* ── HUD ─────────────────────────────────────────── */
+#hud {
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 10;
+}
+#hud-top {
+  display: flex; justify-content: space-between;
+  align-items: center; padding: 14px 20px;
+}
+#hud-player, #hud-coins {
+  background: #00000070;
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-weight: 700; font-size: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+#hud-coins { color: var(--gold); }
+#hud-bottom {
+  position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+}
+#controls-hint {
+  background: #00000055; backdrop-filter: blur(4px);
+  border-radius: 8px; padding: 6px 16px;
+  font-size: 11px; color: var(--muted); white-space: nowrap;
+}
+/* Mira */
+#hud::after {
+  content: '+'; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  font-size: 22px; color: #ffffff80; pointer-events: none;
+}
+
+/* ── CHAT ────────────────────────────────────────── */
+#chat-container {
+  position: fixed; bottom: 56px; left: 16px;
+  width: 320px; z-index: 20;
+}
+#chat-messages {
+  display: flex; flex-direction: column; gap: 4px;
+  max-height: 160px; overflow-y: auto; padding: 6px 0;
+}
+#chat-messages::-webkit-scrollbar { width: 3px; }
+#chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.chat-msg {
+  background: #00000077; backdrop-filter: blur(4px);
+  border-radius: 6px; padding: 5px 10px; font-size: 12px;
+  color: var(--text); animation: fadeUp .2s ease;
+  border-left: 2px solid var(--accent);
+}
+.chat-msg .msg-name { color: var(--accent); font-weight: 700; margin-right: 4px; }
+.chat-msg.system { border-left-color: var(--gold); color: var(--gold); font-style: italic; }
+#chat-input-row { margin-top: 4px; }
+#chat-input {
+  width: 100%; background: #000000aa; backdrop-filter: blur(6px);
+  border: 1px solid var(--accent); border-radius: 8px;
+  color: var(--text); font-family: 'Nunito', sans-serif;
+  font-size: 13px; padding: 8px 12px; outline: none;
+}
+
+/* ── PAUSE ───────────────────────────────────────── */
+#menu-pause {
+  position: fixed; inset: 0; background: #00000088;
+  display: flex; align-items: center; justify-content: center; z-index: 100;
+}
+.pause-box {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 16px; padding: 40px; text-align: center;
+  display: flex; flex-direction: column; gap: 14px; min-width: 220px;
+}
+.pause-box h2 {
+  font-family: 'Press Start 2P', monospace;
+  color: var(--accent); font-size: 15px;
+}
+.pause-box button {
+  padding: 12px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--panel2); color: var(--text);
+  font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: all .2s;
+}
+.pause-box button:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── LOADING ─────────────────────────────────────── */
+#loading-overlay {
+  position: fixed; inset: 0; background: var(--bg);
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; z-index: 999; gap: 16px;
+}
+#loading-overlay h2 { font-family: 'Press Start 2P', monospace; color: var(--accent); font-size: 14px; }
+.loading-bar-wrap { width: 240px; height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.loading-bar { height: 100%; width: 0%; background: var(--accent); border-radius: 99px; transition: width .3s; box-shadow: 0 0 10px var(--accent); }
+
+/* ── ANIMAÇÕES ───────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity:0; transform: translateY(5px); }
+  to   { opacity:1; transform: translateY(0); }
+}

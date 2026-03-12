@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>KOG City</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;700;900&display=swap">
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- TELA DE AUTH (login / cadastro) -->
+  <div id="screen-login">
+    <div id="auth-box">
+      <!-- Conteúdo injetado pelo ui.js -->
+    </div>
+  </div>
+
+  <!-- TELA DO JOGO -->
+  <div id="screen-game" class="hidden">
+    <canvas id="game-canvas"></canvas>
+
+    <!-- HUD -->
+    <div id="hud">
+      <div id="hud-top">
+        <div id="hud-player">
+          <span>🧑</span>
+          <span id="hud-name">Jogador</span>
+        </div>
+        <div id="hud-coins">🪙 <span id="coin-count">0</span></div>
+      </div>
+      <div id="hud-bottom">
+        <div id="controls-hint">
+          WASD mover · Shift correr · Q agachar · Espaço pular · Clique soco · G chute · E emote · T chat
+        </div>
+      </div>
+    </div>
+
+    <!-- CHAT -->
+    <div id="chat-container">
+      <div id="chat-messages"></div>
+      <div id="chat-input-row" class="hidden">
+        <input type="text" id="chat-input" placeholder="Digite e pressione Enter..." maxlength="120"/>
+      </div>
+    </div>
+
+    <!-- PAUSE -->
+    <div id="menu-pause" class="hidden">
+      <div class="pause-box">
+        <h2>Pausado</h2>
+        <button id="btn-resume">Continuar</button>
+        <button id="btn-logout">Sair da conta</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Three.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+  <!-- Jogo -->
+  <script src="firebase-config.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/physics.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/players.js"></script>
+  <script src="js/firebase.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
