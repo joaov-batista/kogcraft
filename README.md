@@ -1,0 +1,12 @@
+adições e mudanças:
+- no NPC, so devo mudar as cores da minha cas!
+- carro está invertido, ajuste posição dele e controles
+- server multiplayer com todos onlines, so da pra ver meu personagem mesmo com mais pessoas
+- tem personagens fantasmas, tipo eu logo e relogo e meu antio personagem fica parado lá
+- coloque o modelo player para os monstros
+- aumente a pista de corrida
+- faça o futebol funcionar, chutes na bola, gols, placar e etc..
+- emote n funciona, arrume
+- adicionar helicoptero
+- ajustar essa questão de posse de casa
+- coloque proximy prompts par mostrar como interagir o npc
